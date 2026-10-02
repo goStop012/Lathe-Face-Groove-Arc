@@ -19,10 +19,12 @@ import {
   Maximize2,
   Crosshair,
   Layers,
+  Settings,
   AlertTriangle,
   CheckCircle2,
   XCircle,
 } from 'lucide-react';
+import { CanvasDisplaySettings } from '../types/machining';
 
 interface CadCanvasProps {
   circle1: CircleConfig;
@@ -32,8 +34,8 @@ interface CadCanvasProps {
   inspections: SegmentInspectionResult[];
   lengthUp: number;
   lengthDown: number;
-  theme: ViewportTheme;
-  setTheme: (theme: ViewportTheme) => void;
+  displaySettings: CanvasDisplaySettings;
+  onUpdateDisplaySettings: (updates: Partial<CanvasDisplaySettings>) => void;
   onUpdateCircle1Radius?: (r: number) => void;
   onUpdateCircle2Radius?: (r: number) => void;
   onUpdateLineY?: (y: number) => void;
@@ -48,8 +50,8 @@ export const CadCanvas: React.FC<CadCanvasProps> = ({
   inspections,
   lengthUp,
   lengthDown,
-  theme,
-  setTheme,
+  displaySettings,
+  onUpdateDisplaySettings,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -76,14 +78,21 @@ export const CadCanvas: React.FC<CadCanvasProps> = ({
     isPinching: false,
   });
 
-  // 图层开关
-  const [showGrid, setShowGrid] = useState<boolean>(true);
-  const [showDimensions, setShowDimensions] = useState<boolean>(true);
-  const [showCoordinates, setShowCoordinates] = useState<boolean>(true);
-  const [showInterferenceLabels, setShowInterferenceLabels] = useState<boolean>(true);
-  const [showClearanceLines, setShowClearanceLines] = useState<boolean>(true);
-  const [clearanceMode, setClearanceMode] = useState<'origin_circle' | 'opposite_circle' | 'both'>('origin_circle');
-  const [showShading, setShowShading] = useState<boolean>(true);
+  // 齿轮设置浮窗开关
+  const [showSettingsPopover, setShowSettingsPopover] = useState<boolean>(false);
+
+  // 从 displaySettings 读取状态
+  const {
+    showGrid,
+    showDimensions,
+    showCoordinates,
+    showInterferenceLabels,
+    showClearanceLines,
+    clearanceMode,
+    theme,
+  } = displaySettings;
+
+  const showShading = true; // 槽壁截面剖面阴影
 
   // 主题配色
   const themeColors = useMemo(() => {
@@ -346,103 +355,8 @@ export const CadCanvas: React.FC<CadCanvasProps> = ({
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
     >
-      {/* 顶部悬浮控制栏 (移动端支持横向滑动，防止与右侧按钮重叠) */}
-      <div className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 z-10 flex items-center gap-1.5 sm:gap-2 bg-slate-900/90 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-slate-700/80 text-xs shadow-lg max-w-[calc(100vw-110px)] overflow-x-auto whitespace-nowrap">
-        <div className="flex items-center gap-1.5 text-slate-300 font-medium shrink-0">
-          <Layers className="w-3.5 h-3.5 text-sky-400" />
-          <span className="hidden sm:inline">图层与显示</span>
-        </div>
-        <div className="h-3 w-px bg-slate-700 mx-1 shrink-0" />
-        <button
-          onClick={() => setShowGrid(!showGrid)}
-          className={`px-2 py-0.5 rounded transition-colors shrink-0 ${
-            showGrid ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' : 'text-slate-400 hover:text-white'
-          }`}
-          title="切换坐标网格"
-        >
-          网格
-        </button>
-        <button
-          onClick={() => setShowDimensions(!showDimensions)}
-          className={`px-2 py-0.5 rounded transition-colors shrink-0 ${
-            showDimensions ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' : 'text-slate-400 hover:text-white'
-          }`}
-          title="切换尺寸标注"
-        >
-          尺寸
-        </button>
-        <button
-          onClick={() => setShowCoordinates(!showCoordinates)}
-          className={`px-2 py-0.5 rounded transition-colors shrink-0 ${
-            showCoordinates ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' : 'text-slate-400 hover:text-white'
-          }`}
-          title="显示交点坐标标签"
-        >
-          坐标
-        </button>
-        <button
-          onClick={() => setShowInterferenceLabels(!showInterferenceLabels)}
-          className={`px-2 py-0.5 rounded transition-colors shrink-0 ${
-            showInterferenceLabels ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'text-slate-400 hover:text-white'
-          }`}
-          title="高亮干涉碰撞与间隙报警"
-        >
-          干涉
-        </button>
-        <button
-          onClick={() => setShowClearanceLines(!showClearanceLines)}
-          className={`px-2 py-0.5 rounded transition-colors shrink-0 ${
-            showClearanceLines ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' : 'text-slate-400 hover:text-white'
-          }`}
-          title="过切深端点作水平引线交回圆弧，度量侧向避空量"
-        >
-          避空引线
-        </button>
-        {showClearanceLines && (
-          <select
-            value={clearanceMode}
-            onChange={(e) => setClearanceMode(e.target.value as 'origin_circle' | 'opposite_circle' | 'both')}
-            className="bg-slate-800 text-[11px] text-sky-300 px-1 py-0.5 rounded border border-slate-700 outline-none cursor-pointer shrink-0"
-            title="选择水平避空引线目标圆弧"
-          >
-            <option value="origin_circle">回交本弧</option>
-            <option value="opposite_circle">交对侧弧</option>
-            <option value="both">双向交回</option>
-          </select>
-        )}
-
-        <div className="h-3 w-px bg-slate-700 mx-1 shrink-0" />
-        {/* 视口主题模式 */}
-        <div className="flex items-center gap-1 bg-slate-800/80 p-0.5 rounded border border-slate-700 shrink-0">
-          <button
-            onClick={() => setTheme('dark')}
-            className={`px-1.5 py-0.5 rounded text-[11px] font-mono transition-colors ${
-              theme === 'dark' ? 'bg-slate-700 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            暗黑
-          </button>
-          <button
-            onClick={() => setTheme('blueprint')}
-            className={`px-1.5 py-0.5 rounded text-[11px] font-mono transition-colors ${
-              theme === 'blueprint' ? 'bg-blue-900/90 text-sky-200 font-semibold' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            蓝图
-          </button>
-          <button
-            onClick={() => setTheme('light')}
-            className={`px-1.5 py-0.5 rounded text-[11px] font-mono transition-colors ${
-              theme === 'light' ? 'bg-slate-200 text-slate-900 font-semibold' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            工程白
-          </button>
-        </div>
-      </div>
-
-      {/* 右上角操作按键 */}
-      <div className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 z-10 flex items-center gap-1 bg-slate-900/90 backdrop-blur-md p-1 sm:p-1.5 rounded-lg border border-slate-700/80 text-xs shadow-lg">
+      {/* 右上角操作按键与齿轮设置 */}
+      <div className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 z-30 flex items-center gap-1 bg-slate-900/90 backdrop-blur-md p-1 sm:p-1.5 rounded-lg border border-slate-700/80 text-xs shadow-lg">
         <button
           onClick={() => {
             const nextZoom = Math.min(zoom * 1.25, 20);
@@ -473,7 +387,167 @@ export const CadCanvas: React.FC<CadCanvasProps> = ({
         >
           <RotateCcw className="w-4 h-4" />
         </button>
+        <div className="h-4 w-px bg-slate-700 mx-0.5" />
+        <button
+          onClick={() => setShowSettingsPopover(!showSettingsPopover)}
+          className={`p-1.5 rounded transition-all touch-manipulation ${
+            showSettingsPopover
+              ? 'bg-sky-600 text-white shadow-sm'
+              : 'hover:bg-slate-800 text-slate-300 hover:text-white'
+          }`}
+          title="图层与显示设置"
+          aria-label="图层与显示设置"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
       </div>
+
+      {/* 齿轮设置浮动菜单 (Popover) */}
+      {showSettingsPopover && (
+        <div className="absolute top-12 right-2.5 sm:top-14 sm:right-3 z-40 w-64 bg-slate-900/95 backdrop-blur-md p-3 rounded-xl border border-slate-700 shadow-2xl text-xs space-y-2.5">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span className="font-semibold text-slate-200 flex items-center gap-1.5">
+              <Settings className="w-3.5 h-3.5 text-sky-400" />
+              <span>图纸显示与视口设置</span>
+            </span>
+            <button
+              onClick={() => setShowSettingsPopover(false)}
+              className="text-slate-400 hover:text-white text-xs px-1 py-0.5 rounded hover:bg-slate-800"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+            <button
+              type="button"
+              onClick={() => onUpdateDisplaySettings({ showGrid: !showGrid })}
+              className={`flex items-center justify-between p-1.5 rounded border text-[11px] font-medium transition-colors ${
+                showGrid
+                  ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                  : 'bg-slate-950 text-slate-400 border-slate-800'
+              }`}
+            >
+              <span>坐标网格</span>
+              <span className="font-mono text-[10px]">{showGrid ? '开' : '关'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onUpdateDisplaySettings({ showDimensions: !showDimensions })}
+              className={`flex items-center justify-between p-1.5 rounded border text-[11px] font-medium transition-colors ${
+                showDimensions
+                  ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                  : 'bg-slate-950 text-slate-400 border-slate-800'
+              }`}
+            >
+              <span>尺寸标注</span>
+              <span className="font-mono text-[10px]">{showDimensions ? '开' : '关'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onUpdateDisplaySettings({ showCoordinates: !showCoordinates })}
+              className={`flex items-center justify-between p-1.5 rounded border text-[11px] font-medium transition-colors ${
+                showCoordinates
+                  ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                  : 'bg-slate-950 text-slate-400 border-slate-800'
+              }`}
+            >
+              <span>交点坐标</span>
+              <span className="font-mono text-[10px]">{showCoordinates ? '开' : '关'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onUpdateDisplaySettings({ showInterferenceLabels: !showInterferenceLabels })}
+              className={`flex items-center justify-between p-1.5 rounded border text-[11px] font-medium transition-colors ${
+                showInterferenceLabels
+                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                  : 'bg-slate-950 text-slate-400 border-slate-800'
+              }`}
+            >
+              <span>干涉标记</span>
+              <span className="font-mono text-[10px]">{showInterferenceLabels ? '开' : '关'}</span>
+            </button>
+          </div>
+
+          <div className="border-t border-slate-800/80 pt-2 space-y-1.5">
+            <button
+              type="button"
+              onClick={() => onUpdateDisplaySettings({ showClearanceLines: !showClearanceLines })}
+              className={`w-full flex items-center justify-between p-1.5 rounded border text-[11px] font-medium transition-colors ${
+                showClearanceLines
+                  ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                  : 'bg-slate-950 text-slate-400 border-slate-800'
+              }`}
+            >
+              <span>切深端点避空引线</span>
+              <span className="font-mono text-[10px]">{showClearanceLines ? '开启' : '关闭'}</span>
+            </button>
+
+            {showClearanceLines && (
+              <select
+                value={clearanceMode}
+                onChange={(e) => onUpdateDisplaySettings({ clearanceMode: e.target.value as any })}
+                className="w-full bg-slate-950 text-sky-300 px-2 py-1.5 rounded border border-slate-700 text-[11px] outline-none cursor-pointer"
+              >
+                <option value="origin_circle">目标：回交本圆弧</option>
+                <option value="opposite_circle">目标：交对侧圆弧</option>
+                <option value="both">目标：双向交回显示</option>
+              </select>
+            )}
+          </div>
+
+          <div className="border-t border-slate-800/80 pt-2 flex items-center justify-between">
+            <span className="text-[11px] text-slate-400">圆输入方式</span>
+            <div className="flex items-center gap-0.5 bg-slate-950 p-0.5 rounded border border-slate-800">
+              <button
+                type="button"
+                onClick={() => onUpdateDisplaySettings({ circleInputMode: 'radius' })}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                  displaySettings.circleInputMode === 'radius'
+                    ? 'bg-sky-600 text-white font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                半径 (R)
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateDisplaySettings({ circleInputMode: 'diameter' })}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                  displaySettings.circleInputMode === 'diameter'
+                    ? 'bg-sky-600 text-white font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                直径 (Ø)
+              </button>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-800/80 pt-2 flex items-center justify-between">
+            <span className="text-[11px] text-slate-400">工程主题</span>
+            <div className="flex items-center gap-0.5 bg-slate-950 p-0.5 rounded border border-slate-800">
+              {(['dark', 'blueprint', 'light'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => onUpdateDisplaySettings({ theme: t })}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors ${
+                    theme === t
+                      ? 'bg-sky-600 text-white font-semibold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {t === 'dark' ? '暗黑' : t === 'blueprint' ? '蓝图' : '工程白'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 左下角实时光标坐标与比例尺 */}
       <div className="absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3 z-10 flex items-center gap-2 sm:gap-3 bg-slate-900/90 backdrop-blur-md px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-700/80 font-mono text-[11px] sm:text-xs text-slate-300 shadow-md">
@@ -498,11 +572,23 @@ export const CadCanvas: React.FC<CadCanvasProps> = ({
       <div className="hidden lg:flex absolute bottom-3 right-3 z-10 items-center gap-3 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700/80 text-[11px] text-slate-300 font-mono shadow-md">
         <div className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-0.5 bg-cyan-400" />
-          <span>{circle1.name} (R{circle1.radius})</span>
+          <span>
+            {circle1.name} (
+            {displaySettings.circleInputMode === 'diameter'
+              ? `Ø${(circle1.radius * 2).toFixed(1)}`
+              : `R${circle1.radius}`}
+            )
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-0.5 bg-amber-400" />
-          <span>{circle2.name} (R{circle2.radius})</span>
+          <span>
+            {circle2.name} (
+            {displaySettings.circleInputMode === 'diameter'
+              ? `Ø${(circle2.radius * 2).toFixed(1)}`
+              : `R${circle2.radius}`}
+            )
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-0.5 bg-emerald-400" />
@@ -776,7 +862,9 @@ export const CadCanvas: React.FC<CadCanvasProps> = ({
                   fontFamily="monospace"
                   fontWeight="600"
                 >
-                  {circle1.name} R{circle1.radius} (Ø{(circle1.radius * 2).toFixed(1)})
+                  {displaySettings.circleInputMode === 'diameter'
+                    ? `${circle1.name} Ø${(circle1.radius * 2).toFixed(1)} (R${circle1.radius})`
+                    : `${circle1.name} R${circle1.radius} (Ø${(circle1.radius * 2).toFixed(1)})`}
                 </text>
               )}
             </g>
@@ -823,7 +911,9 @@ export const CadCanvas: React.FC<CadCanvasProps> = ({
                   fontFamily="monospace"
                   fontWeight="600"
                 >
-                  {circle2.name} R{circle2.radius} (Ø{(circle2.radius * 2).toFixed(1)})
+                  {displaySettings.circleInputMode === 'diameter'
+                    ? `${circle2.name} Ø${(circle2.radius * 2).toFixed(1)} (R${circle2.radius})`
+                    : `${circle2.name} R${circle2.radius} (Ø${(circle2.radius * 2).toFixed(1)})`}
                 </text>
               )}
             </g>

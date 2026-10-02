@@ -105,3 +105,16 @@ export interface InspectionSummary {
 }
 
 export type ViewportTheme = 'blueprint' | 'dark' | 'light';
+
+export type CircleInputMode = 'radius' | 'diameter';
+
+export interface CanvasDisplaySettings {
+  showGrid: boolean;
+  showDimensions: boolean;
+  showCoordinates: boolean;
+  showInterferenceLabels: boolean;
+  showClearanceLines: boolean;
+  clearanceMode: ClearanceLineTargetMode;
+  circleInputMode: CircleInputMode;
+  theme: ViewportTheme;
+}

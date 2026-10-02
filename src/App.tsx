@@ -7,7 +7,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import {
   CircleConfig,
   HorizontalLineConfig,
-  ViewportTheme,
+  CanvasDisplaySettings,
 } from './types/machining';
 import {
   buildIntersectionPoints,
@@ -17,7 +17,6 @@ import {
 import { Header } from './components/Header';
 import { CadCanvas } from './components/CadCanvas';
 import { ParameterPanel } from './components/ParameterPanel';
-import { Sliders } from 'lucide-react';
 
 const DEFAULT_CIRCLE1: CircleConfig = {
   id: 'circle1',
@@ -43,6 +42,17 @@ const DEFAULT_HORIZONTAL_LINE: HorizontalLineConfig = {
   label: '切削刃中心基准线',
 };
 
+const DEFAULT_DISPLAY_SETTINGS: CanvasDisplaySettings = {
+  showGrid: true,
+  showDimensions: true,
+  showCoordinates: true,
+  showInterferenceLabels: true,
+  showClearanceLines: true,
+  clearanceMode: 'origin_circle',
+  circleInputMode: 'radius',
+  theme: 'dark',
+};
+
 export default function App() {
   // 核心几何模型状态
   const [circle1, setCircle1] = useState<CircleConfig>(DEFAULT_CIRCLE1);
@@ -58,8 +68,16 @@ export default function App() {
   const [concentric, setConcentric] = useState<boolean>(true);
   const [syncLengths, setSyncLengths] = useState<boolean>(true);
 
-  // 视口主题
-  const [theme, setTheme] = useState<ViewportTheme>('dark');
+  // 图纸显示与视口设置（齿轮设置状态）
+  const [displaySettings, setDisplaySettings] =
+    useState<CanvasDisplaySettings>(DEFAULT_DISPLAY_SETTINGS);
+
+  const handleUpdateDisplaySettings = useCallback(
+    (updates: Partial<CanvasDisplaySettings>) => {
+      setDisplaySettings((prev) => ({ ...prev, ...updates }));
+    },
+    []
+  );
 
   // 移动端专用视图状态：'canvas' 显示 CAD 图纸，'params' 显示参数调节面板
   const [mobileView, setMobileView] = useState<'canvas' | 'params'>('canvas');
@@ -136,6 +154,7 @@ export default function App() {
     setLengthDown(20);
     setConcentric(true);
     setSyncLengths(true);
+    setDisplaySettings(DEFAULT_DISPLAY_SETTINGS);
   };
 
   return (
@@ -166,6 +185,7 @@ export default function App() {
             concentric={concentric}
             syncLengths={syncLengths}
             clearanceLines={summary.horizontalClearanceLines}
+            displaySettings={displaySettings}
             onUpdateCircle1={handleUpdateCircle1}
             onUpdateCircle2={handleUpdateCircle2}
             onUpdateHorizontalLine={handleUpdateHorizontalLine}
@@ -173,6 +193,7 @@ export default function App() {
             onUpdateLengthDown={setLengthDown}
             setConcentric={setConcentric}
             setSyncLengths={setSyncLengths}
+            onUpdateDisplaySettings={handleUpdateDisplaySettings}
             onSwitchToCanvas={() => setMobileView('canvas')}
           />
         </aside>
@@ -191,23 +212,9 @@ export default function App() {
             inspections={inspections}
             lengthUp={lengthUp}
             lengthDown={lengthDown}
-            theme={theme}
-            setTheme={setTheme}
+            displaySettings={displaySettings}
+            onUpdateDisplaySettings={handleUpdateDisplaySettings}
           />
-
-          {/* 移动端图纸视角下的底部悬浮快捷调参药丸 */}
-          <div className="md:hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
-            <button
-              onClick={() => setMobileView('params')}
-              className="flex items-center gap-1.5 bg-sky-600/90 active:bg-sky-700 text-white text-xs px-3.5 py-1.5 rounded-full shadow-xl border border-sky-400/40 font-medium backdrop-blur-md transition-transform active:scale-95 touch-manipulation whitespace-nowrap"
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              <span>调节参数</span>
-              <span className="font-mono text-[11px] opacity-80 pl-0.5">
-                (R1:{circle1.radius}, R2:{circle2.radius})
-              </span>
-            </button>
-          </div>
         </main>
       </div>
     </div>

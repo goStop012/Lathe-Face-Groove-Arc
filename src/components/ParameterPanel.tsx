@@ -8,6 +8,7 @@ import {
   CircleConfig,
   HorizontalLineConfig,
   HorizontalClearanceLine,
+  CanvasDisplaySettings,
 } from '../types/machining';
 import { PrecisionInput } from './PrecisionInput';
 import {
@@ -17,6 +18,7 @@ import {
   Link,
   Unlink,
   RotateCcw,
+  Settings,
 } from 'lucide-react';
 
 interface ParameterPanelProps {
@@ -28,6 +30,7 @@ interface ParameterPanelProps {
   concentric: boolean;
   syncLengths: boolean;
   clearanceLines: HorizontalClearanceLine[];
+  displaySettings: CanvasDisplaySettings;
   onUpdateCircle1: (updates: Partial<CircleConfig>) => void;
   onUpdateCircle2: (updates: Partial<CircleConfig>) => void;
   onUpdateHorizontalLine: (updates: Partial<HorizontalLineConfig>) => void;
@@ -35,6 +38,7 @@ interface ParameterPanelProps {
   onUpdateLengthDown: (val: number) => void;
   setConcentric: (val: boolean) => void;
   setSyncLengths: (val: boolean) => void;
+  onUpdateDisplaySettings: (updates: Partial<CanvasDisplaySettings>) => void;
   onSwitchToCanvas?: () => void;
 }
 
@@ -47,6 +51,7 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({
   concentric,
   syncLengths,
   clearanceLines,
+  displaySettings,
   onUpdateCircle1,
   onUpdateCircle2,
   onUpdateHorizontalLine,
@@ -54,8 +59,11 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({
   onUpdateLengthDown,
   setConcentric,
   setSyncLengths,
+  onUpdateDisplaySettings,
   onSwitchToCanvas,
 }) => {
+  const isDiameter = displaySettings.circleInputMode === 'diameter';
+
   return (
     <div className="w-full h-full flex flex-col bg-slate-900 border-r border-slate-800 overflow-y-auto text-slate-200 text-xs">
       <div className="p-3.5 space-y-4 flex-1">
@@ -91,23 +99,58 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({
               <Circle className="w-3.5 h-3.5" />
               <span>圆 1 (外壁 / 主圆)</span>
             </div>
-            <span className="font-mono text-cyan-300 font-semibold tabular-nums text-xs">
-              Ø{(circle1.radius * 2).toFixed(1)} mm
-            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() =>
+                  onUpdateDisplaySettings({
+                    circleInputMode: isDiameter ? 'radius' : 'diameter',
+                  })
+                }
+                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                title="快速切换半径/直径输入模式"
+              >
+                {isDiameter ? '直径 Ø' : '半径 R'}
+              </button>
+              <span className="font-mono text-cyan-300 font-semibold tabular-nums text-xs">
+                {isDiameter
+                  ? `Ø${(circle1.radius * 2).toFixed(1)} mm`
+                  : `R${circle1.radius.toFixed(1)} mm`}
+              </span>
+            </div>
           </div>
 
-          <PrecisionInput
-            label="半径 R1"
-            value={circle1.radius}
-            onChange={(r) => onUpdateCircle1({ radius: Math.max(1, r) })}
-            unit="mm"
-            min={1}
-            max={500}
-            step={0.5}
-            subLabel={`直径 Ø${(circle1.radius * 2).toFixed(1)} mm`}
-            quickDeltas={[-10, -5, -1, 1, 5, 10]}
-            accentColor="cyan"
-          />
+          {isDiameter ? (
+            <PrecisionInput
+              label="直径 Ø1"
+              value={Number((circle1.radius * 2).toFixed(3))}
+              onChange={(d) =>
+                onUpdateCircle1({
+                  radius: Math.max(0.25, Number((d / 2).toFixed(3))),
+                })
+              }
+              unit="mm"
+              min={0.5}
+              max={1000}
+              step={1}
+              subLabel={`对应半径 R: ${circle1.radius.toFixed(2)} mm`}
+              quickDeltas={[-20, -10, -2, 2, 10, 20]}
+              accentColor="cyan"
+            />
+          ) : (
+            <PrecisionInput
+              label="半径 R1"
+              value={circle1.radius}
+              onChange={(r) => onUpdateCircle1({ radius: Math.max(0.25, r) })}
+              unit="mm"
+              min={0.25}
+              max={500}
+              step={0.5}
+              subLabel={`对应直径 Ø: ${(circle1.radius * 2).toFixed(2)} mm`}
+              quickDeltas={[-10, -5, -1, 1, 5, 10]}
+              accentColor="cyan"
+            />
+          )}
 
           {!concentric && (
             <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80">
@@ -142,23 +185,58 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({
               <Circle className="w-3.5 h-3.5" />
               <span>圆 2 (内壁 / 刀体圆弧)</span>
             </div>
-            <span className="font-mono text-amber-300 font-semibold tabular-nums text-xs">
-              Ø{(circle2.radius * 2).toFixed(1)} mm
-            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() =>
+                  onUpdateDisplaySettings({
+                    circleInputMode: isDiameter ? 'radius' : 'diameter',
+                  })
+                }
+                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                title="快速切换半径/直径输入模式"
+              >
+                {isDiameter ? '直径 Ø' : '半径 R'}
+              </button>
+              <span className="font-mono text-amber-300 font-semibold tabular-nums text-xs">
+                {isDiameter
+                  ? `Ø${(circle2.radius * 2).toFixed(1)} mm`
+                  : `R${circle2.radius.toFixed(1)} mm`}
+              </span>
+            </div>
           </div>
 
-          <PrecisionInput
-            label="半径 R2"
-            value={circle2.radius}
-            onChange={(r) => onUpdateCircle2({ radius: Math.max(1, r) })}
-            unit="mm"
-            min={1}
-            max={500}
-            step={0.5}
-            subLabel={`直径 Ø${(circle2.radius * 2).toFixed(1)} mm`}
-            quickDeltas={[-10, -5, -1, 1, 5, 10]}
-            accentColor="amber"
-          />
+          {isDiameter ? (
+            <PrecisionInput
+              label="直径 Ø2"
+              value={Number((circle2.radius * 2).toFixed(3))}
+              onChange={(d) =>
+                onUpdateCircle2({
+                  radius: Math.max(0.25, Number((d / 2).toFixed(3))),
+                })
+              }
+              unit="mm"
+              min={0.5}
+              max={1000}
+              step={1}
+              subLabel={`对应半径 R: ${circle2.radius.toFixed(2)} mm`}
+              quickDeltas={[-20, -10, -2, 2, 10, 20]}
+              accentColor="amber"
+            />
+          ) : (
+            <PrecisionInput
+              label="半径 R2"
+              value={circle2.radius}
+              onChange={(r) => onUpdateCircle2({ radius: Math.max(0.25, r) })}
+              unit="mm"
+              min={0.25}
+              max={500}
+              step={0.5}
+              subLabel={`对应直径 Ø: ${(circle2.radius * 2).toFixed(2)} mm`}
+              quickDeltas={[-10, -5, -1, 1, 5, 10]}
+              accentColor="amber"
+            />
+          )}
 
           {!concentric && (
             <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80">
@@ -310,6 +388,143 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({
                   </span>
                 </div>
               ))}
+          </div>
+        </div>
+
+        {/* 6. 齿轮设置：图纸与视口显示设置 */}
+        <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-800 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-slate-300 font-semibold">
+              <Settings className="w-3.5 h-3.5 text-sky-400" />
+              <span>图纸显示与视口设置</span>
+            </div>
+            {/* 主题选择 */}
+            <div className="flex items-center gap-0.5 bg-slate-900 p-0.5 rounded border border-slate-800">
+              {(['dark', 'blueprint', 'light'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => onUpdateDisplaySettings({ theme: t })}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors ${
+                    displaySettings.theme === t
+                      ? 'bg-sky-600 text-white font-semibold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {t === 'dark' ? '暗黑' : t === 'blueprint' ? '蓝图' : '工程白'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-1.5 pt-1">
+            <button
+              type="button"
+              onClick={() => onUpdateDisplaySettings({ showGrid: !displaySettings.showGrid })}
+              className={`flex items-center justify-between p-2 rounded-md border text-[11px] font-medium transition-all ${
+                displaySettings.showGrid
+                  ? 'bg-sky-500/15 text-sky-300 border-sky-500/40'
+                  : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-300'
+              }`}
+            >
+              <span>坐标网格</span>
+              <span className="font-mono text-[10px]">{displaySettings.showGrid ? '已开启' : '关闭'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onUpdateDisplaySettings({ showDimensions: !displaySettings.showDimensions })}
+              className={`flex items-center justify-between p-2 rounded-md border text-[11px] font-medium transition-all ${
+                displaySettings.showDimensions
+                  ? 'bg-sky-500/15 text-sky-300 border-sky-500/40'
+                  : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-300'
+              }`}
+            >
+              <span>尺寸标注</span>
+              <span className="font-mono text-[10px]">{displaySettings.showDimensions ? '已开启' : '关闭'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onUpdateDisplaySettings({ showCoordinates: !displaySettings.showCoordinates })}
+              className={`flex items-center justify-between p-2 rounded-md border text-[11px] font-medium transition-all ${
+                displaySettings.showCoordinates
+                  ? 'bg-sky-500/15 text-sky-300 border-sky-500/40'
+                  : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-300'
+              }`}
+            >
+              <span>交点坐标</span>
+              <span className="font-mono text-[10px]">{displaySettings.showCoordinates ? '已开启' : '关闭'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onUpdateDisplaySettings({ showInterferenceLabels: !displaySettings.showInterferenceLabels })}
+              className={`flex items-center justify-between p-2 rounded-md border text-[11px] font-medium transition-all ${
+                displaySettings.showInterferenceLabels
+                  ? 'bg-rose-500/15 text-rose-300 border-rose-500/40'
+                  : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-300'
+              }`}
+            >
+              <span>干涉标记</span>
+              <span className="font-mono text-[10px]">{displaySettings.showInterferenceLabels ? '已开启' : '关闭'}</span>
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between pt-1 border-t border-slate-800/80">
+            <button
+              type="button"
+              onClick={() => onUpdateDisplaySettings({ showClearanceLines: !displaySettings.showClearanceLines })}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-medium transition-all ${
+                displaySettings.showClearanceLines
+                  ? 'bg-sky-500/20 text-sky-300'
+                  : 'text-slate-400 hover:text-slate-300'
+              }`}
+            >
+              <span>避空水平引线</span>
+              <span className="font-mono text-[10px]">({displaySettings.showClearanceLines ? '开启' : '关闭'})</span>
+            </button>
+
+            {displaySettings.showClearanceLines && (
+              <select
+                value={displaySettings.clearanceMode}
+                onChange={(e) => onUpdateDisplaySettings({ clearanceMode: e.target.value as any })}
+                className="bg-slate-900 text-sky-300 px-2 py-1 rounded border border-slate-700 text-[11px] outline-none cursor-pointer"
+              >
+                <option value="origin_circle">回交本圆弧</option>
+                <option value="opposite_circle">交对侧圆弧</option>
+                <option value="both">双向交回</option>
+              </select>
+            )}
+          </div>
+
+          {/* 圆1与圆2输入方式（半径 / 直径） */}
+          <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+            <span className="text-[11px] text-slate-300 font-medium">圆尺寸输入方式</span>
+            <div className="flex items-center gap-0.5 bg-slate-900 p-0.5 rounded border border-slate-800">
+              <button
+                type="button"
+                onClick={() => onUpdateDisplaySettings({ circleInputMode: 'radius' })}
+                className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                  displaySettings.circleInputMode === 'radius'
+                    ? 'bg-sky-600 text-white font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                半径 (R)
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateDisplaySettings({ circleInputMode: 'diameter' })}
+                className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                  displaySettings.circleInputMode === 'diameter'
+                    ? 'bg-sky-600 text-white font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                直径 (Ø)
+              </button>
+            </div>
           </div>
         </div>
 
