@@ -1,0 +1,6 @@
+{
+  "name": "CNC Face Groove Arc Interference Inspector",
+  "description": "数控车端面槽刀具圆弧干涉检查工具，支持双圆与水平线交点垂直线绘制、尺寸调节与干涉量化分析。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
